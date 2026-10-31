@@ -1,0 +1,19 @@
+<!doctype html><html lang="hu"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-LRt+QHvTfs36GFdXYFz9ARVYTqRpFDx2nGwhZfzFzUk='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>STRNG · Edzői WOD</title>
+<style>:root{color-scheme:dark}*{box-sizing:border-box}body{max-width:680px;margin:32px auto;padding:16px;background:#0b0d0e;color:#f4f4f5;font:16px system-ui}label,button,input,textarea{display:block;width:100%;margin:12px 0;font:inherit}input,textarea,button{padding:14px;border:1px solid #3a4145;border-radius:12px;background:#171b1d;color:inherit}button{cursor:pointer;background:#66d6a3;color:#0b0d0e;font-weight:650}p{color:#b9c0c3;line-height:1.6}a{color:#66d6a3}#dates button{background:#171b1d;color:#fff;text-align:left}#status{color:#66d6a3}</style>
+<h1>STRNG · Edzői WOD</h1><p>Itt állíthatod össze a közös napi kiírásokat. A letöltött fájl GitHubra feltöltése után jelennek meg a vendégek appjában. Ez a szerkesztő önmagában nem publikál.</p>
+<label>Meglévő kiírásfájl betöltése<input type="file" id="file" accept="application/json,.json"></label>
+<label>Edzés dátuma<input type="date" id="date"></label><label>WOD<textarea id="wod" rows="12" maxlength="20000" placeholder="AMRAP 12 perc…"></textarea></label><button id="save">Nap hozzáadása / módosítása</button><button id="download">Kiírásfájl letöltése</button><p id="status" role="status"></p><h2>Kiírt napok</h2><div id="dates"></div>
+<script>
+(()=>{'use strict';let wods={};const $=id=>document.getElementById(id),status=t=>$('status').textContent=t;
+const valid=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&Number.isFinite(Date.parse(d))&&new Date(d).toISOString().slice(0,10)===d;
+const today=new Date();$('date').value=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+function accept(o){if(o?.version!==1||!o.wods||typeof o.wods!=='object'||Array.isArray(o.wods)||Object.keys(o.wods).length>1500)throw Error();for(const[d,v]of Object.entries(o.wods))if(!valid(d)||typeof v!=='string'||v.length>20000)throw Error();wods=o.wods;render()}
+function render(){$('dates').replaceChildren();for(const d of Object.keys(wods).sort().reverse()){const b=document.createElement('button');b.textContent=d;b.onclick=()=>{$('date').value=d;$('wod').value=wods[d]};$('dates').append(b)}}
+$('date').onchange=()=>{$('wod').value=wods[$('date').value]||''};
+$('save').onclick=()=>{const d=$('date').value,v=$('wod').value.trim();if(!valid(d)||!v)return status('Válassz dátumot és írd be a WOD-ot.');wods[d]=v;render();status('A nap hozzáadva. A közzétételhez töltsd le és töltsd fel a kiírásfájlt.')};
+$('download').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({version:1,wods},null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='coach-wods.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);status('Letöltés elindítva. Ezt a coach-wods.json fájlt töltsd a repó gyökerébe.')};
+$('file').onchange=async()=>{const f=$('file').files[0];if(!f)return;try{if(f.size>1024*1024)throw Error();accept(JSON.parse(await f.text()));status('Kiírások betöltve.')}catch(e){status('Hibás vagy túl nagy fájl. A korábbi kiírások megmaradtak.')}finally{$('file').value=''}};
+if(location.protocol.startsWith('http'))fetch('coach-wods.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.text()}).then(t=>{if(t.length>1024*1024)throw Error();accept(JSON.parse(t));status('A jelenlegi közös kiírások betöltve.')}).catch(()=>status('A meglévő kiírásokat a fájlválasztóval tudod betölteni.'));
+})();
+</script></html>
